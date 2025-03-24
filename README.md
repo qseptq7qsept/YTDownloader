@@ -24,6 +24,7 @@ All required dependencies are automatically installed in a Python virtual enviro
 - yt-dlp
 - PySide6
 - Python 3.10.10 or newer
+- ffmpeg.exe in `/ffmpeg` folder
 
 ## Installation
 
@@ -39,10 +40,7 @@ All required dependencies are automatically installed in a Python virtual enviro
    ```bash
    git clone https://github.com/YourUsername/YTDownloader.git
    
-4. **FFMPEG**   
-  Place ffmpeg.exe in the `/ffmpeg` folder
-
-5. **Run the Installation Script:**  
+4. **Run the Installation Script:**  
    Execute `install.bat` to install all necessary components.
 
 ## Usage

@@ -13,6 +13,10 @@ from PySide6.QtCore import QThread, Signal
 
 CONFIG_FILE = "config.json"
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+ffmpeg_folder = os.path.join(script_dir, "ffmpeg")
+ffmpeg_exe = os.path.join(ffmpeg_folder, "ffmpeg.exe")
+
 class DownloadThread(QThread):
     finished_signal = Signal(str)
     error_signal = Signal(str)
@@ -30,6 +34,7 @@ class DownloadThread(QThread):
         self.end_time = end_time
 
     def run(self):
+
         self.debug_signal.emit("Starting download thread...")
         presets = {
             "Default": "%(title)s.%(ext)s",
@@ -64,26 +69,27 @@ class DownloadThread(QThread):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(self.url, download=True)
 
-            def convert_file(downloaded_file):
+            def convert_file(downloaded_file):              
+
                 downloaded_basename = os.path.splitext(downloaded_file)[0]
                 if self.out_format in ["mp3", "aac", "wav", "opus"]:
                     ffmpeg_cmds = {
                         "mp3": [
-                            "ffmpeg", "-y", "-i", downloaded_file, "-vn",
+                            ffmpeg_exe, "-y", "-i", downloaded_file, "-vn",
                             "-ar", "44100", "-ac", "2", "-b:a", "320k",
                             downloaded_basename + ".mp3"
                         ],
                         "aac": [
-                            "ffmpeg", "-y", "-i", downloaded_file, "-vn",
+                            ffmpeg_exe, "-y", "-i", downloaded_file, "-vn",
                             "-c:a", "aac", "-b:a", "320k",
                             downloaded_basename + ".aac"
                         ],
                         "wav": [
-                            "ffmpeg", "-y", "-i", downloaded_file, "-vn",
+                            ffmpeg_exe, "-y", "-i", downloaded_file, "-vn",
                             downloaded_basename + ".wav"
                         ],
                         "opus": [
-                            "ffmpeg", "-y", "-i", downloaded_file, "-vn",
+                            ffmpeg_exe, "-y", "-i", downloaded_file, "-vn",
                             "-c:a", "libopus", "-b:a", "192k",
                             downloaded_basename + ".opus"
                         ]
@@ -100,7 +106,7 @@ class DownloadThread(QThread):
                         mp4_output = downloaded_basename + "_converted.mp4"
                     else:
                         mp4_output = downloaded_basename + ".mp4"
-                    ffmpeg_cmd = ["ffmpeg", "-y", "-i", downloaded_file] + vf_option + [
+                    ffmpeg_cmd = [ffmpeg_exe, "-y", "-i", downloaded_file] + vf_option + [
                         "-c:v", "libx264", "-crf", "23", "-preset", "slow",
                         "-c:a", "aac", "-b:a", "192k", mp4_output
                     ]
@@ -323,7 +329,7 @@ class MainWindow(QMainWindow):
         # Create the GIF using ffmpeg
         output_gif = os.path.join(output_dir, "output.gif")
         ffmpeg_cmd = [
-            "ffmpeg", "-y", "-i", temp_video_path,
+            ffmpeg_exe, "-y", "-i", temp_video_path,
             "-ss", str(time_in),
             "-t", str(duration),
             "-vf", "fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",

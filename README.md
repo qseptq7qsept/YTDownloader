@@ -38,7 +38,7 @@ All required dependencies are automatically installed in a Python virtual enviro
 
 3. **Git Clone this Repository:**  
    ```bash
-   git clone https://github.com/YourUsername/YTDownloader.git
+   git clone https://github.com/qseptq7qsept/YTDownloader.git
    
 4. **Run the Installation Script:**  
    Execute `install.bat` to install all necessary components.

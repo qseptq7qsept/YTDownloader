@@ -4,7 +4,7 @@ call env\Scripts\activate
 if errorlevel 1 goto error
 
 REM Run the script from the current folder
-python YTDownloader.py
+pythonw YTDownloader.py
 if errorlevel 1 goto error
 
 goto end

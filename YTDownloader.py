@@ -6,7 +6,7 @@ import yt_dlp
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel,
     QLineEdit, QPushButton, QComboBox, QMessageBox, QHBoxLayout,
-    QFileDialog, QTextEdit, QDialog
+    QFileDialog, QTextEdit
 )
 from PySide6.QtGui import QPalette, QColor
 from PySide6.QtCore import QThread, Signal
@@ -34,7 +34,6 @@ class DownloadThread(QThread):
         self.end_time = end_time
 
     def run(self):
-
         self.debug_signal.emit("Starting download thread...")
         presets = {
             "Default": "%(title)s.%(ext)s",
@@ -69,8 +68,7 @@ class DownloadThread(QThread):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(self.url, download=True)
 
-            def convert_file(downloaded_file):              
-
+            def convert_file(downloaded_file):
                 downloaded_basename = os.path.splitext(downloaded_file)[0]
                 if self.out_format in ["mp3", "aac", "wav", "opus"]:
                     ffmpeg_cmds = {
@@ -112,7 +110,6 @@ class DownloadThread(QThread):
                     ]
                     subprocess.run(ffmpeg_cmd, check=True)
 
-                # Delete the source file once conversion is done.
                 if os.path.exists(downloaded_file):
                     os.remove(downloaded_file)
 
@@ -155,7 +152,7 @@ class DownloadThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Video Downloader & GIF Creator")
+        self.setWindowTitle("YT Downloader -q7")
         central = QWidget()
         self.setCentralWidget(central)
         self.main_layout = QVBoxLayout(central)
@@ -189,12 +186,18 @@ class MainWindow(QMainWindow):
         self.format_combo.addItems(["mp3", "aac", "wav", "opus", "mp4", "gif"])
         self.main_layout.addWidget(QLabel("Output Format:"))
         self.main_layout.addWidget(self.format_combo)
+        # Connect format change signal
+        self.format_combo.currentTextChanged.connect(self.update_format_options)
         
-        # Resolution for mp4
+        # Resolution options container (only for mp4)
+        self.resolution_widget = QWidget()
+        res_layout = QVBoxLayout(self.resolution_widget)
+        self.resolution_widget.setLayout(res_layout)
+        res_layout.addWidget(QLabel("Resolution (for mp4):"))
         self.resolution_combo = QComboBox()
         self.resolution_combo.addItems(["Auto", "720", "1080"])
-        self.main_layout.addWidget(QLabel("Resolution (for mp4):"))
-        self.main_layout.addWidget(self.resolution_combo)
+        res_layout.addWidget(self.resolution_combo)
+        self.main_layout.addWidget(self.resolution_widget)
         
         # Console log
         self.log_text_edit = QTextEdit()
@@ -207,8 +210,46 @@ class MainWindow(QMainWindow):
         self.download_button.clicked.connect(self.handle_download)
         self.main_layout.addWidget(self.download_button)
         
-        # Add GIF editor settings
-        self.add_gif_editor_ui()
+        # Update yt-dlp button
+        self.update_button = QPushButton("Update yt-dlp")
+        self.update_button.clicked.connect(self.update_yt_dlp)
+        self.main_layout.addWidget(self.update_button)
+        
+        # GIF editor settings container (only for gif)
+        self.gif_editor_widget = QWidget()
+        gif_layout = QVBoxLayout(self.gif_editor_widget)
+        self.gif_editor_widget.setLayout(gif_layout)
+        gif_layout.addWidget(QLabel("GIF Editor Settings:"))
+        # Time In
+        time_in_layout = QHBoxLayout()
+        time_in_label = QLabel("Time In (s):")
+        self.time_in_input = QLineEdit("0")
+        time_in_layout.addWidget(time_in_label)
+        time_in_layout.addWidget(self.time_in_input)
+        gif_layout.addLayout(time_in_layout)
+        # Time Out
+        time_out_layout = QHBoxLayout()
+        time_out_label = QLabel("Time Out (s):")
+        self.time_out_input = QLineEdit("10")
+        time_out_layout.addWidget(time_out_label)
+        time_out_layout.addWidget(self.time_out_input)
+        gif_layout.addLayout(time_out_layout)
+        self.main_layout.addWidget(self.gif_editor_widget)
+        
+        # Set initial visibility based on current format selection
+        self.update_format_options(self.format_combo.currentText())
+
+    def update_format_options(self, fmt):
+        """Toggle visibility of resolution and GIF settings based on the selected format."""
+        if fmt == "mp4":
+            self.resolution_widget.show()
+        else:
+            self.resolution_widget.hide()
+        
+        if fmt == "gif":
+            self.gif_editor_widget.show()
+        else:
+            self.gif_editor_widget.hide()
 
     def select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder", self.folder_line_edit.text())
@@ -262,22 +303,18 @@ class MainWindow(QMainWindow):
         self.download_button.setEnabled(True)
         QMessageBox.critical(self, "Error", err)
 
-    def add_gif_editor_ui(self):
-        self.main_layout.addWidget(QLabel("GIF Editor Settings:"))
-        # Time In
-        time_in_layout = QHBoxLayout()
-        time_in_label = QLabel("Time In (s):")
-        self.time_in_input = QLineEdit("0")
-        time_in_layout.addWidget(time_in_label)
-        time_in_layout.addWidget(self.time_in_input)
-        self.main_layout.addLayout(time_in_layout)
-        # Time Out
-        time_out_layout = QHBoxLayout()
-        time_out_label = QLabel("Time Out (s):")
-        self.time_out_input = QLineEdit("10")
-        time_out_layout.addWidget(time_out_label)
-        time_out_layout.addWidget(self.time_out_input)
-        self.main_layout.addLayout(time_out_layout)
+    def update_yt_dlp(self):
+        self.update_button.setEnabled(False)
+        self.log_console("Updating yt-dlp...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"])
+            self.log_console("yt-dlp updated successfully!")
+            QMessageBox.information(self, "Update", "yt-dlp updated successfully!")
+        except Exception as e:
+            self.log_console("Error updating yt-dlp: " + str(e))
+            QMessageBox.critical(self, "Update Error", f"Failed to update yt-dlp:\n{e}")
+        finally:
+            self.update_button.setEnabled(True)
 
     def create_gif_if_needed(self):
         url = self.url_input.text().strip()
@@ -290,7 +327,6 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Invalid time input.")
             return
 
-        # Enforce maximum duration of 3 seconds for GIFs
         duration = time_out - time_in
         if duration > 5:
             QMessageBox.warning(self, "Input Error", "GIF duration cannot exceed 5 seconds.")
@@ -308,7 +344,6 @@ class MainWindow(QMainWindow):
         self.download_button.setEnabled(False)
         self.log_console("Starting GIF creation...")
 
-        # Download video to a temporary file
         temp_video_path = os.path.join(output_dir, "temp_video.mp4")
         ydl_opts = {
             'outtmpl': temp_video_path,
@@ -326,7 +361,6 @@ class MainWindow(QMainWindow):
             self.download_button.setEnabled(True)
             return
 
-        # Create the GIF using ffmpeg
         output_gif = os.path.join(output_dir, "output.gif")
         ffmpeg_cmd = [
             ffmpeg_exe, "-y", "-i", temp_video_path,
@@ -350,7 +384,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # Set Fusion style and a custom dark palette
     app.setStyle("Fusion")
     dark_palette = QPalette()
     dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
